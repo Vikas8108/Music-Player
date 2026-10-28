@@ -1,0 +1,832 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MUSIC - Ambient Transparent Audio Player</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.09);
+        }
+        /* Ambient Background Orbs Animation */
+        @keyframes floatOrb1 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            50% { transform: translate(50px, 70px) scale(1.15); }
+        }
+        @keyframes floatOrb2 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            50% { transform: translate(-60px, -40px) scale(1.1); }
+        }
+        @keyframes floatOrb3 {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            50% { transform: translate(40px, -60px) scale(1.25); }
+        }
+        .blob-1 { animation: floatOrb1 15s ease-in-out infinite; }
+        .blob-2 { animation: floatOrb2 19s ease-in-out infinite; }
+        .blob-3 { animation: floatOrb3 17s ease-in-out infinite; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 9999px;
+        }
+
+        /* Vinyl Spin Animation */
+        @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spinSlow 20s linear infinite;
+        }
+        .paused {
+            animation-play-state: paused;
+        }
+
+        /* Hide scrollbar utility */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-white relative flex flex-col justify-between">
+
+    <!-- Ambient Transparent Background with Glowing Orbs -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute top-[-15%] left-[-15%] w-[65vw] h-[65vw] rounded-full bg-gradient-to-br from-indigo-600/25 to-purple-600/25 blur-[130px] blob-1"></div>
+        <div class="absolute bottom-[-15%] right-[-15%] w-[70vw] h-[70vw] rounded-full bg-gradient-to-br from-blue-600/25 to-cyan-500/25 blur-[150px] blob-2"></div>
+        <div class="absolute top-[25%] right-[15%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-br from-pink-600/15 to-purple-700/15 blur-[120px] blob-3"></div>
+    </div>
+
+    <!-- Main Transparent App Container -->
+    <div class="relative z-10 flex flex-col h-full max-w-4xl mx-auto w-full p-4 sm:p-6 justify-between">
+
+        <!-- Top Header & Tabs Section -->
+        <header class="flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl glass flex items-center justify-center text-cyan-400 font-bold text-lg shadow-lg">
+                        <i class="fa-solid fa-music"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight text-white/90">MUSIC</h1>
+                        <p class="text-[11px] text-white/50">Ambient Transparent Player</p>
+                    </div>
+                </div>
+
+                <!-- Right Action Buttons: Add Phone Storage Audio & APK Builder -->
+                <div class="flex items-center space-x-2">
+                    <!-- Hidden File Input for Phone Local Storage Audio (MP3, WAV, FLAC, AAC, etc.) -->
+                    <input type="file" id="local-file-input" multiple accept="audio/*,.mp3,.wav,.flac,.aac,.ogg,.m4a,.wma" class="hidden" onchange="handleLocalFilesSelected(event)">
+                    
+                    <button onclick="document.getElementById('local-file-input').click()" class="glass px-3.5 py-2 rounded-xl text-xs font-medium text-cyan-300 hover:bg-white/20 transition-all flex items-center space-x-2 shadow-lg" title="Open Phone Music Files">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <span class="hidden sm:inline">Add Local Audio</span>
+                    </button>
+
+                    <button onclick="openApkModal()" class="glass px-3.5 py-2 rounded-xl text-xs font-medium text-purple-300 hover:bg-white/20 transition-all flex items-center space-x-2 shadow-lg" title="Build & Download Android APK">
+                        <i class="fa-brands fa-android text-sm"></i>
+                        <span class="hidden sm:inline">APK & PWA</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Notification Toast -->
+            <div id="toast" class="hidden glass px-4 py-2 rounded-2xl text-xs text-cyan-300 transition-all duration-300 self-start shadow-xl border border-cyan-500/30 flex items-center space-x-2">
+                <i class="fa-solid fa-circle-info text-cyan-400"></i> <span id="toast-msg">Ready</span>
+            </div>
+
+            <!-- Navigation Tabs: Playlist, Favorites, Tracks, Albums, Singers -->
+            <nav class="flex items-center space-x-2 overflow-x-auto pb-1 pt-1 no-scrollbar">
+                <button onclick="switchTab('tracks')" id="tab-tracks" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap bg-white/25 text-white shadow-lg">Tracks</button>
+                <button onclick="switchTab('playlist')" id="tab-playlist" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap text-white/70 hover:text-white hover:bg-white/10">Playlists</button>
+                <button onclick="switchTab('favorites')" id="tab-favorites" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap text-white/70 hover:text-white hover:bg-white/10">Favorites</button>
+                <button onclick="switchTab('albums')" id="tab-albums" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap text-white/70 hover:text-white hover:bg-white/10">Albums</button>
+                <button onclick="switchTab('singers')" id="tab-singers" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap text-white/70 hover:text-white hover:bg-white/10">Singers</button>
+            </nav>
+        </header>
+
+        <!-- Center View Area (Dynamic Tab Content & Full Expanded Player Overlay) -->
+        <main class="flex-1 my-3 overflow-hidden flex flex-col relative">
+
+            <!-- Tab Content Panel -->
+            <div id="content-panel" class="absolute inset-0 glass rounded-3xl p-4 sm:p-6 overflow-y-auto flex flex-col shadow-2xl transition-all duration-300">
+                <!-- Injected dynamically via JS -->
+            </div>
+
+            <!-- Full Expanded Player Overlay View -->
+            <div id="player-view" class="absolute inset-0 glass rounded-3xl p-6 flex flex-col items-center justify-between shadow-2xl transition-all duration-500 z-20 translate-y-full opacity-0 pointer-events-none">
+                <!-- Top bar in expanded view -->
+                <div class="w-full flex items-center justify-between">
+                    <button onclick="togglePlayerView()" class="w-10 h-10 rounded-full glass flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-all">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <span class="text-xs tracking-widest text-white/60 uppercase font-semibold">Now Playing</span>
+                    <button onclick="toggleFavoriteCurrent()" class="w-10 h-10 rounded-full glass flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-all">
+                        <i id="expanded-fav-icon" class="fa-regular fa-heart text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Rotating Vinyl Disc Art -->
+                <div class="relative flex items-center justify-center my-auto">
+                    <div class="absolute w-60 h-60 sm:w-70 sm:h-70 rounded-full bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 blur-xl"></div>
+                    <div id="vinyl-disc" class="w-52 h-52 sm:w-60 sm:h-60 rounded-full bg-gradient-to-tr from-gray-900 to-gray-800 border-4 border-white/10 shadow-2xl flex items-center justify-center animate-spin-slow paused relative">
+                        <div class="absolute inset-3 rounded-full border border-white/5"></div>
+                        <div class="absolute inset-8 rounded-full border border-white/5"></div>
+                        <div class="absolute inset-14 rounded-full border border-white/5"></div>
+                        <div id="vinyl-center-art" class="w-18 h-18 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-inner border-2 border-white/20 text-white font-bold text-xl">
+                            🎵
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Track Meta Info -->
+                <div class="text-center w-full max-w-sm mb-4">
+                    <h2 id="current-title" class="text-xl sm:text-2xl font-bold text-white truncate">No track selected</h2>
+                    <p id="current-artist" class="text-sm text-white/60 truncate mt-1">Import phone music to begin</p>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Bottom Controls & Playbar -->
+        <footer class="flex flex-col gap-3 glass rounded-3xl p-4 shadow-2xl">
+
+            <!-- Track Info Bar (Mini view above controls) -->
+            <div class="flex items-center justify-between px-2 cursor-pointer" onclick="togglePlayerView()">
+                <div class="flex items-center space-x-3 overflow-hidden">
+                    <div id="mini-thumb" class="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-lg flex-shrink-0 shadow">
+                        🎵
+                    </div>
+                    <div class="overflow-hidden">
+                        <h4 id="mini-title" class="text-sm font-semibold text-white/90 truncate">Ready to play local music</h4>
+                        <p id="mini-artist" class="text-xs text-white/50 truncate">Tap 'Add Local Audio' or demo tracks</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2 text-white/70">
+                    <button onclick="event.stopPropagation(); toggleFavoriteCurrent();" class="p-2 hover:text-cyan-400 transition-all">
+                        <i id="mini-fav-icon" class="fa-regular fa-heart text-lg"></i>
+                    </button>
+                    <button class="p-2 hover:text-white transition-all">
+                        <i class="fa-solid fa-chevron-up text-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar & Timers -->
+            <div class="flex flex-col space-y-1 px-2">
+                <div class="flex items-center justify-between text-xs text-white/50">
+                    <span id="current-time">0:00</span>
+                    <span id="total-duration">0:00</span>
+                </div>
+                <div class="relative w-full h-2 bg-white/10 rounded-full cursor-pointer group" id="progress-container" onclick="seekTrack(event)">
+                    <div id="progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-400 to-indigo-500 rounded-full w-0 transition-all"></div>
+                    <div id="progress-handle" class="absolute top-1/2 -translate-y-1/2 left-0 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+            </div>
+
+            <!-- Bottom Controls Bar: Shuffle (left down), Back, Play/Pause, Next, Mode/Loop (right down) -->
+            <div class="flex items-center justify-between px-1 sm:px-4 pt-1">
+                
+                <!-- Bottom-Left: Shuffle Button -->
+                <button onclick="toggleShuffle()" id="shuffle-btn" class="w-11 h-11 rounded-2xl glass-card flex items-center justify-center text-white/60 hover:text-white hover:bg-white/15 transition-all text-base shadow-sm" title="Shuffle">
+                    <i class="fa-solid fa-shuffle"></i>
+                </button>
+
+                <!-- Central Playback Controls: Back, Play/Pause, Next -->
+                <div class="flex items-center space-x-4">
+                    <button onclick="prevTrack()" class="w-11 h-11 rounded-2xl glass-card flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-all text-base shadow-sm active:scale-95" title="Previous Track">
+                        <i class="fa-solid fa-backward-step"></i>
+                    </button>
+
+                    <button onclick="togglePlayPause()" id="play-pause-btn" class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white text-xl shadow-lg hover:shadow-cyan-500/25 transition-all active:scale-95" title="Play / Pause">
+                        <i id="play-pause-icon" class="fa-solid fa-play ml-0.5"></i>
+                    </button>
+
+                    <button onclick="nextTrack()" class="w-11 h-11 rounded-2xl glass-card flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-all text-base shadow-sm active:scale-95" title="Next Track">
+                        <i class="fa-solid fa-forward-step"></i>
+                    </button>
+                </div>
+
+                <!-- Bottom-Right: Single Combined Play Mode Button (Cycles: Normal -> Loop All -> Single Repeat) -->
+                <button onclick="cyclePlayMode()" id="mode-btn" class="w-11 h-11 rounded-2xl glass-card flex items-center justify-center text-white/60 hover:text-white hover:bg-white/15 transition-all text-base shadow-sm relative" title="Playback Mode">
+                    <i id="mode-icon" class="fa-solid fa-repeat"></i>
+                    <span id="mode-badge" class="absolute -top-1 -right-1 text-[9px] bg-cyan-500 text-slate-950 font-bold px-1 rounded-full hidden">1</span>
+                </button>
+
+            </div>
+
+        </footer>
+
+    </div>
+
+    <!-- Create Playlist Modal with + Action -->
+    <div id="playlist-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass w-full max-w-sm rounded-3xl p-6 flex flex-col space-y-4 shadow-2xl border border-white/20">
+            <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                <div class="w-7 h-7 rounded-lg bg-cyan-500 text-slate-950 flex items-center justify-center text-xs font-bold">+</div>
+                <span>Create New Playlist</span>
+            </h3>
+            <input type="text" id="new-playlist-name" placeholder="Playlist Name (e.g., Midnight Vibes)" class="w-full bg-white/15 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400 text-sm">
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closePlaylistModal()" class="flex-1 glass py-2.5 rounded-xl text-sm font-medium text-white/70 hover:text-white">Cancel</button>
+                <button onclick="saveNewPlaylist()" class="flex-1 bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-medium py-2.5 rounded-xl text-sm shadow-lg">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APK / PWA Builder & Downloader Modal -->
+    <div id="apk-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass w-full max-w-md rounded-3xl p-6 flex flex-col space-y-4 shadow-2xl border border-white/20 relative my-auto">
+            <button onclick="closeApkModal()" class="absolute top-5 right-5 text-white/60 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-green-500 to-cyan-600 flex items-center justify-center text-white text-xl shadow-lg">
+                    <i class="fa-brands fa-android"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">MUSIC .APK & PWA Suite</h3>
+                    <p class="text-xs text-white/50">Native Android App Package Generator</p>
+                </div>
+            </div>
+            <p class="text-xs text-white/70 leading-relaxed">
+                Transform this ambient music player into a standalone native Android `.apk` app or install instantly via WebAPK.
+            </p>
+            <div class="bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-2.5 text-xs text-white/80">
+                <div class="flex items-center space-x-2"><i class="fa-solid fa-circle-check text-cyan-400"></i><span>Full local device storage audio support (MP3, WAV, FLAC, AAC)</span></div>
+                <div class="flex items-center space-x-2"><i class="fa-solid fa-circle-check text-cyan-400"></i><span>True ambient glassmorphism transparent audio engine</span></div>
+                <div class="flex items-center space-x-2"><i class="fa-solid fa-circle-check text-cyan-400"></i><span>Offline capable with PWA Service Worker caching</span></div>
+            </div>
+            <div class="flex flex-col space-y-2 pt-1">
+                <button onclick="downloadManifestAndFiles()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm shadow-lg flex items-center justify-center space-x-2 transition-all">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Download App Manifest & .APK Config</span>
+                </button>
+                <button onclick="showToast('To compile real APK: Use Bubblewrap CLI or PWABuilder.com')" class="w-full glass py-2.5 rounded-xl text-xs font-medium text-white/70 hover:text-white transition-all">
+                    View Bubblewrap / TWA Compilation Guide
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Audio Element -->
+    <audio id="audio-element"></audio>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State storage for tracks stored in phone / added locally + ambient default demo tracks
+        let tracks = [
+            {
+                id: 101,
+                title: "Ambient Horizon (Demo)",
+                artist: "Phone Audio Library",
+                album: "Ambient Sessions",
+                singer: "Phone Library",
+                duration: "2:45",
+                url: "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3",
+                cover: "🌌"
+            },
+            {
+                id: 102,
+                title: "Crystal Waves (Demo)",
+                artist: "Acoustic Dreams",
+                album: "WAV Collection",
+                singer: "Acoustic Dreams",
+                duration: "3:10",
+                url: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=peaceful-guitar-ambient-lofi-104995.mp3",
+                cover: "🌊"
+            }
+        ];
+
+        let playlists = [
+            { id: 1, name: "Phone Favorites", trackIds: [101] },
+            { id: 2, name: "Chill & Relax", trackIds: [102] }
+        ];
+
+        let currentTab = 'tracks';
+        let currentTrackIndex = 0;
+        let isPlaying = false;
+        let isShuffle = false;
+        let playMode = 0; // 0: Normal (Stop at end), 1: Loop All, 2: Single Track Repeat
+        let favorites = [101];
+
+        const audioElement = document.getElementById('audio-element');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playPauseIcon = document.getElementById('play-pause-icon');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const currentTimeEl = document.getElementById('current-time');
+        const totalDurationEl = document.getElementById('total-duration');
+        const vinylDisc = document.getElementById('vinyl-disc');
+        const playerView = document.getElementById('player-view');
+
+        // Initialize App on load
+        window.onload = function() {
+            switchTab('tracks');
+            loadTrack(0, false);
+
+            // Audio event listeners
+            audioElement.addEventListener('timeupdate', updateProgress);
+            audioElement.addEventListener('ended', handleTrackEnded);
+            audioElement.addEventListener('loadedmetadata', () => {
+                if(!isNaN(audioElement.duration)) {
+                    totalDurationEl.innerText = formatTime(audioElement.duration);
+                }
+            });
+        };
+
+        // Handle Local Phone Audio File Selection (Supports MP3, WAV, FLAC, AAC, OGG, M4A, etc.)
+        function handleLocalFilesSelected(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            let addedCount = 0;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                // Verify if it's an audio file or supports mp3, wav, etc.
+                if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|flac|aac|ogg|m4a|wma)$/i)) {
+                    const fileUrl = URL.createObjectURL(file);
+                    
+                    // Parse metadata from filename
+                    const cleanName = file.name.replace(/\.[^/.]+$/, "");
+                    const nameParts = cleanName.split("-");
+                    let artist = "Local Device";
+                    let title = cleanName;
+                    if(nameParts.length > 1) {
+                        artist = nameParts[0].trim();
+                        title = nameParts.slice(1).join("-").trim();
+                    }
+
+                    const newTrack = {
+                        id: Date.now() + i,
+                        title: title,
+                        artist: artist,
+                        album: "Phone Local Storage",
+                        singer: artist,
+                        duration: "3:30",
+                        url: fileUrl,
+                        cover: getAudioIcon(file.name)
+                    };
+
+                    tracks.push(newTrack);
+                    addedCount++;
+                }
+            }
+
+            if (addedCount > 0) {
+                showToast(`Successfully added ${addedCount} music file(s) from phone!`);
+                if (tracks.length === addedCount) {
+                    loadTrack(0, false);
+                }
+                renderContentPanel();
+            } else {
+                showToast("Please select valid music files (MP3, WAV, FLAC, etc.)");
+            }
+        }
+
+        function getAudioIcon(filename) {
+            if (filename.endsWith('.wav')) return '🌊';
+            if (filename.endsWith('.flac')) return '💎';
+            if (filename.endsWith('.aac')) return '🎵';
+            return '🎶';
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white/25', 'text-white', 'shadow-lg');
+                btn.classList.add('text-white/70', 'hover:text-white', 'hover:bg-white/10');
+            });
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-white/70', 'hover:text-white', 'hover:bg-white/10');
+                activeBtn.classList.add('bg-white/25', 'text-white', 'shadow-lg');
+            }
+
+            renderContentPanel();
+        }
+
+        // Render Content based on active tab
+        function renderContentPanel() {
+            const panel = document.getElementById('content-panel');
+            let html = '';
+
+            if (currentTab === 'tracks') {
+                html = `
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold text-white/90">Phone Tracks (${tracks.length})</h3>
+                        <button onclick="document.getElementById('local-file-input').click()" class="text-xs text-cyan-400 hover:underline font-medium">+ Add Phone Music</button>
+                    </div>
+                    <div class="space-y-2">
+                `;
+                
+                tracks.forEach((track, index) => {
+                    const isCurrent = index === currentTrackIndex;
+                    const isFav = favorites.includes(track.id);
+                    html += `
+                        <div onclick="playTrackIndex(${index})" class="glass-card p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all ${isCurrent ? 'border-cyan-400/50 bg-white/15' : ''}">
+                            <div class="flex items-center space-x-3 overflow-hidden">
+                                <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg flex-shrink-0">${track.cover}</div>
+                                <div class="overflow-hidden">
+                                    <h4 class="text-sm font-semibold truncate ${isCurrent ? 'text-cyan-300' : 'text-white'}">${track.title}</h4>
+                                    <p class="text-xs text-white/50 truncate">${track.artist}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3 flex-shrink-0">
+                                <button onclick="event.stopPropagation(); toggleFavorite(${track.id})" class="text-white/60 hover:text-cyan-400 p-1">
+                                    <i class="${isFav ? 'fa-solid text-cyan-400' : 'fa-regular'} fa-heart"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } else if (currentTab === 'playlist') {
+                html = `
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold text-white/90">Playlists</h3>
+                        <button onclick="openPlaylistModal()" class="w-8 h-8 rounded-xl bg-cyan-500 text-slate-950 font-bold flex items-center justify-center shadow-lg hover:scale-105 transition-transform" title="Create Playlist">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                `;
+                playlists.forEach(pl => {
+                    html += `
+                        <div onclick="showToast('Playlist: ${pl.name}')" class="glass-card p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:border-cyan-400/40">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center text-xl">📁</div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-white">${pl.name}</h4>
+                                    <p class="text-xs text-white/50">${pl.trackIds.length} tracks</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-white/30 text-xs"></i>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } else if (currentTab === 'favorites') {
+                const favTracks = tracks.filter(t => favorites.includes(t.id));
+                html = `<h3 class="text-lg font-bold mb-3 text-white/90">Favorites (${favTracks.length})</h3><div class="space-y-2">`;
+                if(favTracks.length === 0) {
+                    html += `<div class="text-center py-10 text-white/40 text-sm">No favorite tracks yet. Tap the heart icon on any song!</div>`;
+                } else {
+                    favTracks.forEach((track) => {
+                        const originalIndex = tracks.findIndex(t => t.id === track.id);
+                        html += `
+                            <div onclick="playTrackIndex(${originalIndex})" class="glass-card p-3 rounded-2xl flex items-center justify-between cursor-pointer">
+                                <div class="flex items-center space-x-3 overflow-hidden">
+                                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg flex-shrink-0">${track.cover}</div>
+                                    <div class="overflow-hidden">
+                                        <h4 class="text-sm font-semibold text-white truncate">${track.title}</h4>
+                                        <p class="text-xs text-white/50 truncate">${track.artist}</p>
+                                    </div>
+                                </div>
+                                <button onclick="event.stopPropagation(); toggleFavorite(${track.id})" class="text-cyan-400 p-1">
+                                    <i class="fa-solid fa-heart"></i>
+                                </button>
+                            </div>
+                        `;
+                    });
+                }
+                html += `</div>`;
+            } else if (currentTab === 'albums') {
+                const albums = [...new Set(tracks.map(t => t.album))];
+                html = `<h3 class="text-lg font-bold mb-3 text-white/90">Albums (${albums.length})</h3><div class="grid grid-cols-2 gap-3">`;
+                albums.forEach(album => {
+                    html += `
+                        <div onclick="showToast('Album: ${album}')" class="glass-card p-4 rounded-2xl flex flex-col items-center text-center cursor-pointer hover:border-cyan-400/40">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-indigo-600/20 flex items-center justify-center text-3xl mb-2">💿</div>
+                            <h4 class="text-sm font-bold text-white truncate w-full">${album}</h4>
+                            <p class="text-xs text-white/50 truncate w-full">Local Phone Audio</p>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } else if (currentTab === 'singers') {
+                const singers = [...new Set(tracks.map(t => t.singer))];
+                html = `<h3 class="text-lg font-bold mb-3 text-white/90">Singers / Artists (${singers.length})</h3><div class="space-y-2">`;
+                singers.forEach(singer => {
+                    html += `
+                        <div onclick="showToast('Artist: ${singer}')" class="glass-card p-3 rounded-2xl flex items-center space-x-3 cursor-pointer hover:border-cyan-400/40">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500/30 to-purple-600/30 flex items-center justify-center text-sm font-bold">🎤</div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-white">${singer}</h4>
+                                <p class="text-xs text-white/50">${tracks.filter(t=>t.singer===singer).length} track(s)</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            panel.innerHTML = html;
+        }
+
+        // Load Track into audio element and UI
+        function loadTrack(index, autoPlay = true) {
+            if (tracks.length === 0) return;
+            currentTrackIndex = index;
+            const track = tracks[currentTrackIndex];
+
+            audioElement.src = track.url;
+            document.getElementById('current-title').innerText = track.title;
+            document.getElementById('current-artist').innerText = track.artist;
+            document.getElementById('mini-title').innerText = track.title;
+            document.getElementById('mini-artist').innerText = track.artist;
+            document.getElementById('mini-thumb').innerText = track.cover;
+            document.getElementById('vinyl-center-art').innerText = track.cover;
+
+            updateFavoriteUI();
+
+            if (autoPlay) {
+                playAudio();
+            } else {
+                pauseAudio();
+            }
+
+            if (currentTab === 'tracks' || currentTab === 'favorites') {
+                renderContentPanel();
+            }
+        }
+
+        // Play / Pause toggles
+        function togglePlayPause() {
+            if (tracks.length === 0) return;
+            if (isPlaying) {
+                pauseAudio();
+            } else {
+                playAudio();
+            }
+        }
+
+        function playAudio() {
+            audioElement.play().then(() => {
+                isPlaying = true;
+                playPauseIcon.className = "fa-solid fa-pause";
+                vinylDisc.classList.remove('paused');
+            }).catch(err => {
+                console.log("Playback error or blocked:", err);
+            });
+        }
+
+        function pauseAudio() {
+            audioElement.pause();
+            isPlaying = false;
+            playPauseIcon.className = "fa-solid fa-play ml-0.5";
+            vinylDisc.classList.add('paused');
+        }
+
+        function playTrackIndex(index) {
+            loadTrack(index, true);
+        }
+
+        function nextTrack() {
+            if (tracks.length === 0) return;
+            let nextIdx;
+            if (isShuffle) {
+                nextIdx = Math.floor(Math.random() * tracks.length);
+            } else {
+                nextIdx = (currentTrackIndex + 1) % tracks.length;
+            }
+            loadTrack(nextIdx, true);
+        }
+
+        function prevTrack() {
+            if (tracks.length === 0) return;
+            let prevIdx = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+            loadTrack(prevIdx, true);
+        }
+
+        // Track Progress Update
+        function updateProgress() {
+            if(isNaN(audioElement.duration)) return;
+            const progressPercent = (audioElement.currentTime / audioElement.duration) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            currentTimeEl.innerText = formatTime(audioElement.currentTime);
+        }
+
+        function seekTrack(event) {
+            const width = progressContainer.clientWidth;
+            const clickX = event.offsetX;
+            const duration = audioElement.duration;
+            if(!isNaN(duration)) {
+                audioElement.currentTime = (clickX / width) * duration;
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        // Track Ended Handler according to Play Mode
+        function handleTrackEnded() {
+            if (playMode === 2) {
+                // Single Track Repeat
+                audioElement.currentTime = 0;
+                playAudio();
+            } else if (playMode === 1 || currentTrackIndex < tracks.length - 1) {
+                // Loop All or normal sequence
+                nextTrack();
+            } else {
+                pauseAudio();
+            }
+        }
+
+        // Shuffle Toggle (Bottom-left corner)
+        function toggleShuffle() {
+            isShuffle = !isShuffle;
+            const btn = document.getElementById('shuffle-btn');
+            if (isShuffle) {
+                btn.classList.add('text-cyan-400', 'bg-white/20');
+                btn.classList.remove('text-white/60', 'glass-card');
+                showToast("Shuffle Enabled");
+            } else {
+                btn.classList.remove('text-cyan-400', 'bg-white/20');
+                btn.classList.add('text-white/60', 'glass-card');
+                showToast("Shuffle Disabled");
+            }
+        }
+
+        // Single Combined Play Mode Button (Bottom-right corner)
+        // Cycles: 0 -> Normal, 1 -> Loop All, 2 -> Single Track Repeat
+        function cyclePlayMode() {
+            playMode = (playMode + 1) % 3;
+            const btn = document.getElementById('mode-btn');
+            const badge = document.getElementById('mode-badge');
+
+            if (playMode === 0) {
+                btn.classList.remove('text-cyan-400', 'bg-white/20');
+                btn.classList.add('text-white/60', 'glass-card');
+                badge.classList.add('hidden');
+                showToast("Playback Mode: Normal");
+            } else if (playMode === 1) {
+                btn.classList.add('text-cyan-400', 'bg-white/20');
+                btn.classList.remove('text-white/60', 'glass-card');
+                badge.classList.add('hidden');
+                showToast("Playback Mode: Loop All");
+            } else if (playMode === 2) {
+                btn.classList.add('text-cyan-400', 'bg-white/20');
+                badge.classList.remove('hidden');
+                showToast("Playback Mode: Single Track Repeat");
+            }
+        }
+
+        // Favorites Handling
+        function toggleFavorite(trackId) {
+            const index = favorites.indexOf(trackId);
+            if (index > -1) {
+                favorites.splice(index, 1);
+                showToast("Removed from Favorites");
+            } else {
+                favorites.push(trackId);
+                showToast("Added to Favorites");
+            }
+            updateFavoriteUI();
+            if (currentTab === 'favorites' || currentTab === 'tracks') {
+                renderContentPanel();
+            }
+        }
+
+        function toggleFavoriteCurrent() {
+            if(tracks.length === 0) return;
+            const currentTrack = tracks[currentTrackIndex];
+            toggleFavorite(currentTrack.id);
+        }
+
+        function updateFavoriteUI() {
+            if (tracks.length === 0) return;
+            const currentTrack = tracks[currentTrackIndex];
+            const isFav = favorites.includes(currentTrack.id);
+            const miniFav = document.getElementById('mini-fav-icon');
+            const expFav = document.getElementById('expanded-fav-icon');
+
+            if (isFav) {
+                miniFav.className = "fa-solid fa-heart text-lg text-cyan-400";
+                expFav.className = "fa-solid fa-heart text-lg text-cyan-400";
+            } else {
+                miniFav.className = "fa-regular fa-heart text-lg";
+                expFav.className = "fa-regular fa-heart text-lg";
+            }
+        }
+
+        // Playlist Modals
+        function openPlaylistModal() {
+            document.getElementById('playlist-modal').classList.remove('hidden');
+            document.getElementById('new-playlist-name').value = '';
+        }
+
+        function closePlaylistModal() {
+            document.getElementById('playlist-modal').classList.add('hidden');
+        }
+
+        function saveNewPlaylist() {
+            const name = document.getElementById('new-playlist-name').value.trim();
+            if(!name) {
+                showToast("Please enter a playlist name");
+                return;
+            }
+            playlists.push({
+                id: Date.now(),
+                name: name,
+                trackIds: []
+            });
+            closePlaylistModal();
+            showToast(`Playlist "${name}" created successfully!`);
+            if(currentTab === 'playlist') {
+                renderContentPanel();
+            }
+        }
+
+        // APK Modal
+        function openApkModal() {
+            document.getElementById('apk-modal').classList.remove('hidden');
+        }
+        function closeApkModal() {
+            document.getElementById('apk-modal').classList.add('hidden');
+        }
+
+        function downloadManifestAndFiles() {
+            const manifestData = {
+                name: "MUSIC",
+                short_name: "MUSIC",
+                start_url: "/",
+                display: "standalone",
+                background_color: "#030712",
+                theme_color: "#030712",
+                icons: []
+            };
+            const blob = new Blob([JSON.stringify(manifestData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "manifest.json";
+            a.click();
+            showToast("Downloaded WebAPK manifest.json successfully!");
+        }
+
+        // Toggle Full Expanded Player View
+        function togglePlayerView() {
+            if (playerView.classList.contains('translate-y-full')) {
+                playerView.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+            } else {
+                playerView.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // Toast Notification Helper
+        let toastTimeout;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.remove('hidden');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+```
